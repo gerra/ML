@@ -3,9 +3,28 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
+class Point:
+    x = []
+    label = 0
+    def __init__(self, list):
+        dimension = len(list) - 1
+        self.x = list[0:dimension]
+        self.label = list[dimension]
+
+    def addDimension(self, f):
+        self.x.append(f(self))
+
+    def convert(self, f):
+        for i in range(0, len(x)):
+            self.x[i] = f(self, i)
+
 # metrics
 def minkowskiDist(m, point1, point2):
-    return (abs(point1[0] - point2[0])**m + abs(point1[1] - point2[1])**m) ** (1 / m)
+    assert len(point1.x) == len(point2.x)
+    s = 0
+    for i in range(0, len(point1.x)):
+        s += abs(point1.x[i] - point2.x[i]) ** m
+    return s ** (1 / m)
 
 def euclidDist(point1, point2):
     return minkowskiDist(2, point1, point2)
@@ -45,7 +64,7 @@ def kFoldCrossValidation(k, data, train):
 def accuracy(knn, data):
     correct = 0
     for point in data:
-        if knn(point) == point[2]:
+        if knn(point) == point.label:
             correct += 1
 #    print('{} {}'.format(correct, len(data)))
     return 1.0 * correct / len(data)
@@ -63,10 +82,10 @@ def unchunks(chunks):
 def trainKnn(trainData, k, dist):
     def knn(point):
         nn = sorted(trainData, cmp = distanceComparator(point, dist))[:k]
-        c0  = 0
-        c1  = 0
+        c0 = 0
+        c1 = 0
         for p in nn:
-            if p[2] == 0:
+            if p.label == 0:
                 c0 += 1
             else:
                 c1 += 1
@@ -77,12 +96,17 @@ def trainKnn(trainData, k, dist):
 points = []
 with open("chips") as f:
     for line in f:
-        points.append([float(part) for part in line.strip().split(',')])
+        #points.append([float(part) for part in line.strip().split(',')])
+        points.append(Point([float(part) for part in line.strip().split(',')]))
 
-metrics = [("euclid", euclidDist), ("manhatten", manhattenDist)]
-for k in range(1, 15):
-    print('==={}==='.format(k))
-    for (mname, mm) in metrics:
-        print('--->{}<---'.format(mname))
-        print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, k, mm)))
+print('==={}==='.format(5))
+print('--->{}<---'.format("manhatten"))
+print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, 5, manhattenDist)))
+
+#metrics = [("euclid", euclidDist), ("manhatten", manhattenDist)]
+#for k in range(1, 15):
+#    print('==={}==='.format(k))
+#    for (mname, mm) in metrics:
+#        print('--->{}<---'.format(mname))
+#        print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, k, mm)))
 

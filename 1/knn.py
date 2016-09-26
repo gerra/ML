@@ -30,9 +30,12 @@ def minkowskiDist(m, point1, point2):
 def euclidDist(point1, point2):
     return minkowskiDist(2, point1, point2)
 
-def manhattenDist(point1, point2):
+def manhattanDist(point1, point2):
     return minkowskiDist(1, point1, point2)
 
+
+def keyFunction(point, dist):
+    return lambda p: dist(point, p)
 
 def distanceComparator(point, dist):
     def compare(point1, point2):
@@ -72,7 +75,7 @@ def accuracy(knn, data):
 
 # utility
 def chunks(data, k):
-    m = (len(data) + k - 1) / k
+    m = int((len(data) + k - 1) / k)
     for i in range(0, len(data), m):
         yield data[i : i + m]
 
@@ -82,7 +85,7 @@ def unchunks(chunks):
 # knn
 def trainKnn(trainData, k, dist):
     def knn(point):
-        nn = sorted(trainData, cmp = distanceComparator(point, dist))[:k]
+        nn = sorted(trainData, key = keyFunction(point, dist))[:k]
         c0 = 0
         c1 = 0
         for p in nn:
@@ -126,16 +129,16 @@ with open("chips") as f:
         lst = [float(part) for part in line.strip().split(',')]
         points.append(Point(lst[0:len(lst)-1], lst[len(lst)-1]))
 
-#showData(points, 5, manhattenDist)
+showData(points, 5, manhattanDist)
 #showData(points, 5, euclidDist)
 
-#print('==={}==='.format(5))
-#print('--->{}<---'.format("manhatten"))
-#print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, 5, manhattenDist)))
+print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, 5, manhattanDist)))
 
-metrics = [("euclid", euclidDist), ("manhatten", manhattenDist)]
+"""
+metrics = [("euclid", euclidDist), ("manhattan", manhattanDist)]
 for k in range(1, 15):
     print('==={}==='.format(k))
     for (mname, mm) in metrics:
         print('--->{}<---'.format(mname))
         print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, k, mm)))
+"""

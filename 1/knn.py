@@ -25,7 +25,7 @@ def minkowskiDist(m, point1, point2):
     s = 0
     for i in range(0, len(point1.x)):
         s += abs(point1.x[i] - point2.x[i]) ** m
-    return s ** (1 / m)
+    return s ** (1.0 / m)
 
 def euclidDist(point1, point2):
     return minkowskiDist(2, point1, point2)
@@ -94,10 +94,11 @@ def trainKnn(trainData, k, dist):
     return knn
 
 def showData(data, k, dist):
-    xMin = min([point.x[0] for point in data]) - 1
-    xMax = max([point.x[0] for point in data]) + 1
-    yMin = min([point.x[1] for point in data]) - 1
-    yMax = max([point.x[1] for point in data]) + 1
+    offset = 0.5
+    xMin = min([point.x[0] for point in data]) - offset
+    xMax = max([point.x[0] for point in data]) + offset
+    yMin = min([point.x[1] for point in data]) - offset
+    yMax = max([point.x[1] for point in data]) + offset
     h = 0.05
     testX, testY = np.meshgrid(np.arange(xMin, xMax, h), np.arange(yMin, yMax, h))
     pairs = zip(testX.ravel(), testY.ravel())
@@ -125,15 +126,16 @@ with open("chips") as f:
         lst = [float(part) for part in line.strip().split(',')]
         points.append(Point(lst[0:len(lst)-1], lst[len(lst)-1]))
 
-showData(points, 5, manhattenDist)
+#showData(points, 5, manhattenDist)
+#showData(points, 5, euclidDist)
 
-print('==={}==='.format(5))
-print('--->{}<---'.format("manhatten"))
-print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, 5, manhattenDist)))
+#print('==={}==='.format(5))
+#print('--->{}<---'.format("manhatten"))
+#print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, 5, manhattenDist)))
 
-#metrics = [("euclid", euclidDist), ("manhatten", manhattenDist)]
-#for k in range(1, 15):
-#    print('==={}==='.format(k))
-#    for (mname, mm) in metrics:
-#        print('--->{}<---'.format(mname))
-#        print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, k, mm)))
+metrics = [("euclid", euclidDist), ("manhatten", manhattenDist)]
+for k in range(1, 15):
+    print('==={}==='.format(k))
+    for (mname, mm) in metrics:
+        print('--->{}<---'.format(mname))
+        print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, k, mm)))

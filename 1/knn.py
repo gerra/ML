@@ -1,15 +1,16 @@
 from random import shuffle
 import math
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as pl
+from matplotlib.colors import ListedColormap
 
 class Point:
     x = []
     label = 0
-    def __init__(self, list):
-        dimension = len(list) - 1
-        self.x = list[0:dimension]
-        self.label = list[dimension]
+
+    def __init__(self, list, label=-1):
+        self.x = list
+        self.label = label
 
     def addDimension(self, f):
         self.x.append(f(self))
@@ -92,12 +93,39 @@ def trainKnn(trainData, k, dist):
         return 0 if c0 > c1 else 1
     return knn
 
+def showData(data, k, dist):
+    xMin = min([point.x[0] for point in data]) - 1
+    xMax = max([point.x[0] for point in data]) + 1
+    yMin = min([point.x[1] for point in data]) - 1
+    yMax = max([point.x[1] for point in data]) + 1
+    h = 0.05
+    testX, testY = np.meshgrid(np.arange(xMin, xMax, h), np.arange(yMin, yMax, h))
+    pairs = zip(testX.ravel(), testY.ravel())
+    points = []
+    for pair in pairs:
+        points.append(Point([pair[0], pair[1]]))
+    knn = trainKnn(data, k, dist)
+    classColormap  = ListedColormap(['#FF0000', '#00FF00'])
+    testColormap   = ListedColormap(['#FFAAAA', '#AAFFAA'])
+    pl.pcolormesh(testX,
+                  testY,
+                  np.asarray([knn(point) for point in points]).reshape(testX.shape),
+                  cmap=testColormap)
+    pl.scatter([point.x[0] for point in data],
+               [point.x[1] for point in data],
+               c = [point.label for point in data],
+               cmap=classColormap)
+    pl.show()
+
 # IO
 points = []
 with open("chips") as f:
     for line in f:
         #points.append([float(part) for part in line.strip().split(',')])
-        points.append(Point([float(part) for part in line.strip().split(',')]))
+        lst = [float(part) for part in line.strip().split(',')]
+        points.append(Point(lst[0:len(lst)-1], lst[len(lst)-1]))
+
+showData(points, 5, manhattenDist)
 
 print('==={}==='.format(5))
 print('--->{}<---'.format("manhatten"))
@@ -109,4 +137,3 @@ print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainDat
 #    for (mname, mm) in metrics:
 #        print('--->{}<---'.format(mname))
 #        print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, k, mm)))
-

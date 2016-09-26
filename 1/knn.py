@@ -1,95 +1,88 @@
-import random
+from random import shuffle
 import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Separate N data elements in two parts:
-#	test data with N * testPercent elements
-#	train_data with N * (1.0 - testPercent) elements
-def splitToTrainAndTest(data, testPercent):
-    trainData = []
-    testData  = []
-    for row in data:
-        if random.random() < testPercent:
-            testData.append(row)
-        else:
-            trainData.append(row)
-    return trainData, testData
+# metrics
+def minkowskiDist(m, point1, point2):
+    return (abs(point1[0] - point2[0])**m + abs(point1[1] - point2[1])**m) ** (1 / m)
 
 def euclidDist(point1, point2):
-	return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
+    return minkowskiDist(2, point1, point2)
 
 def manhattenDist(point1, point2):
-	return abs(point1[0] - point2[0]) + abs(point1[1] - point2[1])
+    return minkowskiDist(1, point1, point2)
 
-def filter(points, id, third):
-	return [point[id] for point in points if point[2] == third]
 
 def distanceComparator(point, dist):
-	def compare(point1, point2):
-		d1 = dist(point, point1)
-		d2 = dist(point, point2)
-		if d1 < d2:
-			return -1
-		elif d1 > d2:
-			return 1
-		else: 
-			return 0
-	return compare
+    def compare(point1, point2):
+        return cmp(dist(point, point1), dist(point, point2))
+    return compare
 
-def leaveOneOut(trainData, dist):
-	n = len(trainData)
-	optimalK    = 1
-	optimalFail = n
-	for k in range(1, n):
-		failCount = 0
-		for i in range(0, n):
-			point = trainData[i]
-			points = trainData[0:i]
-			if (i + 1 != n): 
-				points += trainData[(i+1):n]
-			pointClass = classify(point, points, k, dist)
-			if pointClass != point[2]:
-				failCount += 1
-		if failCount < optimalFail:
-			optimalFail = failCount
-			optimalK    = k
-	print(n)
-	print(optimalFail)
-	return optimalK
+# cross-validations
+def tkFoldCrossValidation(t, k, data, train):
+    totalAccuracy = 0.0
+    for it in range(0, t):
+        shuffle(data)
+        totalAccuracy += kFoldCrossValidation(k, data, train)
+    return totalAccuracy / t
 
+def kFoldCrossValidation(k, data, train):
+    n = len(data)
+    folds = list(chunks(data, k))
+    totalAccuracy = 0.0
+    for i in range(0, len(folds)):
+        validateData = folds[i]
+        chunked = folds[:i]
+        if (i + 1) != n:
+            chunked += folds[(i + 1):]
+        trainData = unchunks(chunked)
+        knn = train(trainData)
+        totalAccuracy += accuracy(knn, validateData)
+    return totalAccuracy / len(folds)
 
-def getKNN(points, k, point, dist):
-	return sorted(points, cmp = distanceComparator(point, dist))[:k]
+# accuracy
+def accuracy(knn, data):
+    correct = 0
+    for point in data:
+        if knn(point) == point[2]:
+            correct += 1
+#    print('{} {}'.format(correct, len(data)))
+    return 1.0 * correct / len(data)
 
-def classify(pointToClassify, points, k, dist):
-	knn = getKNN(points, k, pointToClassify, dist)
-	c0  = 0
-	c1  = 0
-	for point in knn:
-		if point[2] == 0:
-			c0 += 1
-		else:
-			c1 += 1
-	return 0 if c0 > c1 else 1
+# utility
+def chunks(data, k):
+    m = (len(data) + k - 1) / k
+    for i in range(0, len(data), m):
+        yield data[i : i + m]
 
+def unchunks(chunks):
+    return [i for chunk in chunks for i in chunk]
 
+# knn
+def trainKnn(trainData, k, dist):
+    def knn(point):
+        nn = sorted(trainData, cmp = distanceComparator(point, dist))[:k]
+        c0  = 0
+        c1  = 0
+        for p in nn:
+            if p[2] == 0:
+                c0 += 1
+            else:
+                c1 += 1
+        return 0 if c0 > c1 else 1
+    return knn
+
+# IO
 points = []
 with open("chips") as f:
-	for line in f:
-		points.append([float(part) for part in line.strip().split(',')])
+    for line in f:
+        points.append([float(part) for part in line.strip().split(',')])
 
-x0 = filter(points, 0, 0)
-y0 = filter(points, 1, 0)
+metrics = [("euclid", euclidDist), ("manhatten", manhattenDist)]
+for k in range(1, 15):
+    print('==={}==='.format(k))
+    for (mname, mm) in metrics:
+        print('--->{}<---'.format(mname))
+        print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, k, mm)))
 
-x1 = filter(points, 0, 1)
-y1 = filter(points, 1, 1)
-
-trainData, testData = splitToTrainAndTest(points, 0.2)
-print(leaveOneOut(trainData, manhattenDist))
-
-getKNN(points, 2, [-1,-1], euclidDist)
-
-plt.plot(x0, y0, 'bo')
-plt.plot(x1, y1, 'ro')
-plt.show()

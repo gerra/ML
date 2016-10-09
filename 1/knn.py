@@ -13,7 +13,9 @@ class Point:
         self.label = label
 
     def addDimension(self, f):
-        self.x.append(f(self))
+        xx = list(self.x)
+        xx.append(f(self))
+        return Point(xx, self.label)
 
     def convert(self, f):
         for i in range(0, len(x)):
@@ -70,7 +72,6 @@ def accuracy(knn, data):
     for point in data:
         if knn(point) == point.label:
             correct += 1
-#    print('{} {}'.format(correct, len(data)))
     return 1.0 * correct / len(data)
 
 # utility
@@ -83,21 +84,25 @@ def unchunks(chunks):
     return [i for chunk in chunks for i in chunk]
 
 # knn
-def trainKnn(trainData, k, dist):
+def trainKnn(trainData, k, dist, weight):
     def knn(point):
         nn = sorted(trainData, key = keyFunction(point, dist))[:k]
-        c0 = 0
-        c1 = 0
+        c0 = 0.0
+        c1 = 0.0
+        cnt0 = 0
+        cnt1 = 0
         for p in nn:
             if p.label == 0:
-                c0 += 1
+                cnt0 += 1
+                c0 += weight(dist(point, p))
             else:
-                c1 += 1
+                cnt1 += 1
+                c1 += weight(dist(point, p))
         return 0 if c0 > c1 else 1
     return knn
 
-def showData(data, k, dist):
-    offset = 0.5
+def showData(data, k, dist, weight):
+    offset = 0.05
     xMin = min([point.x[0] for point in data]) - offset
     xMax = max([point.x[0] for point in data]) + offset
     yMin = min([point.x[1] for point in data]) - offset
@@ -108,7 +113,7 @@ def showData(data, k, dist):
     points = []
     for pair in pairs:
         points.append(Point([pair[0], pair[1]]))
-    knn = trainKnn(data, k, dist)
+    knn = trainKnn(data, k, dist, weight)
     classColormap  = ListedColormap(['#FF0000', '#00FF00'])
     testColormap   = ListedColormap(['#FFAAAA', '#AAFFAA'])
     pl.pcolormesh(testX,
@@ -129,16 +134,43 @@ with open("chips") as f:
         lst = [float(part) for part in line.strip().split(',')]
         points.append(Point(lst[0:len(lst)-1], lst[len(lst)-1]))
 
-showData(points, 5, manhattanDist)
+def normalize(data):
+    ps = list(data)
+    xMin = min([point.x[0] for point in data])
+    xMax = max([point.x[0] for point in data])
+    yMin = min([point.x[1] for point in data])
+    yMax = max([point.x[1] for point in data])
+    for p in ps:
+        p.x[0] = (p.x[0] - xMin) / (xMax - xMin)
+        p.x[1] = (p.x[1] - xMin) / (xMax - xMin)
+    return ps
+
+def transform(data):
+    return [point.addDimension(lambda p: p.x[0] ** (1.0 / 3) + p.x[1] ** (1.0 / 3)) for point in data]
+
+#print(normalize(points))
+weight = lambda d: math.exp(-d)
+#showData(normalize(points), 5, manhattanDist, weight)
 #showData(points, 5, euclidDist)
 
-print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, 5, manhattanDist)))
+metrics = [("euclid", euclidDist), ("manhattan", manhattanDist)]
+for (mname, mm) in metrics:
+    print(tkFoldCrossValidation(100, 11, transform(normalize(points)), lambda trainData: trainKnn(trainData, 5, mm, weight)))
+
 
 """
-metrics = [("euclid", euclidDist), ("manhattan", manhattanDist)]
-for k in range(1, 15):
-    print('==={}==='.format(k))
-    for (mname, mm) in metrics:
-        print('--->{}<---'.format(mname))
-        print(tkFoldCrossValidation(100, 10, points, lambda trainData: trainKnn(trainData, k, mm)))
+kInterval = range(4, 13)
+
+
+for k in kInterval:
+    print(k, end=',')
+
+print()
+for (mname, mm) in metrics:
+    for foldQty in range(7, 13):
+        print('-->{}'.format(foldQty))
+        for k in kInterval:
+            res = tkFoldCrossValidation(100, foldQty, normalize(points), lambda trainData: trainKnn(trainData, k, mm, weight))
+            print(res, end = ',')
+    print()
 """
